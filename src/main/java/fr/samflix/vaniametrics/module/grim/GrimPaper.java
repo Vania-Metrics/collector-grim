@@ -7,26 +7,26 @@ import fr.samflix.vaniametrics.api.VaniaMetrics;
 import fr.samflix.vaniametrics.api.VaniaMetricsProvider;
 
 /**
- * Métriques d'anticheat GrimAC.
+ * GrimAC anticheat metrics.
  *
- * <p>Un écouteur avant tout : les violations se comptent quand elles arrivent, pas quand Prometheus interroge.
+ * <p>A listener above all: violations are counted as they happen, not when Prometheus scrapes.
  */
 public final class GrimPaper extends JavaPlugin {
 
-	private GrimCollector collecteur;
+	private GrimCollector collector;
 
 	@Override
 	public void onEnable() {
-		VaniaMetrics metriques = VaniaMetricsProvider.get();
-		collecteur = new GrimCollector();
-		metriques.enregistrer(collecteur);
-		Bukkit.getPluginManager().registerEvents(collecteur, this);
+		VaniaMetrics metrics = VaniaMetricsProvider.get();
+		collector = new GrimCollector();
+		metrics.register(collector);
+		Bukkit.getPluginManager().registerEvents(collector, this);
 	}
 
 	@Override
 	public void onDisable() {
-		if (collecteur != null) {
-			VaniaMetricsProvider.chercher().ifPresent(m -> m.retirer(collecteur));
+		if (collector != null) {
+			VaniaMetricsProvider.find().ifPresent(m -> m.unregister(collector));
 		}
 	}
 }

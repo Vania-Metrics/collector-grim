@@ -1,18 +1,19 @@
-# Dépendances de COMPILATION seulement — aucun jar tiers n'est embarqué dans le
-# jar produit. L'API VaniaMetrics n'est pas ici : elle vient du dépôt git core
-# (voir gradle.properties et settings.gradle.kts).
+# COMPILE-only dependencies — no third-party jar is bundled in the produced
+# jar. The VaniaMetrics API isn't here: it comes from the core git repo (see
+# gradle.properties and settings.gradle.kts).
 #
-# Les plugins tiers viennent du dépôt Maven de Modrinth, à l'id de version exact :
-# c'est le même fichier, octet pour octet, que le lien de téléchargement.
+# Third-party plugins come from Modrinth's Maven repo, at the exact version
+# id: it's the same file, byte for byte, as the download link.
 #
-# Les empreintes SHA-256 de tout ce qui est résolu sont épinglées dans
-# gradle/verification-metadata.xml. Après une montée de version :
+# SHA-256 checksums of everything resolved are pinned in
+# gradle/verification-metadata.xml. After a version bump:
 #   ./gradlew --write-verification-metadata sha256 build
 #
-# paper-api EST UN INSTANTANÉ DATÉ : Paper ne publie pas de version figée de son
-# API, l'horodatage est la version. Il est lu comme une version figée (voir
-# settings.gradle.kts), donc SANS ses dépendances transitives : le bundle « paper »
-# déclare celles dont la compilation a besoin, aux versions du .pom de paper-api.
+# paper-api is a dated snapshot: Paper doesn't publish a pinned version of its
+# API, the timestamp is the version. It's read as a pinned version (see
+# settings.gradle.kts), so WITHOUT its transitive dependencies: the "paper"
+# bundle declares the ones compilation needs, at the versions from paper-api's
+# .pom.
 [versions]
 paper-api = "1.21.11-R0.1-20260511.115010-91"
 adventure = "4.26.1"

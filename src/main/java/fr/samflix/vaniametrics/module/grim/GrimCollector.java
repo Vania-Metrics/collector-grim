@@ -14,26 +14,25 @@ import fr.samflix.vaniametrics.api.Histogram;
 import fr.samflix.vaniametrics.api.MetricRegistry;
 
 /**
- * GrimAC — les violations d'anticheat.
+ * GrimAC — anticheat violations.
  *
- * <p>C'EST LE CONNECTEUR LE PLUS RENTABLE DU LOT, parce qu'il donne une information qu'aucune autre
- * source n'a : {@code mc_anticheat_flags_total{check="…"}} dit qu'on teste les défenses du serveur,
- * et son TAUX est une alerte naturelle. Un joueur légitime déclenche un contrôle de temps en temps
- * — réseau, décalage d'horloge — ; dix par minute sur un même contrôle, non.
+ * <p>This is the most valuable collector in the set, because it gives information no other
+ * source has: {@code mc_anticheat_flags_total{check="…"}} shows the server's defenses being
+ * exercised, and its RATE is a natural alert. A legitimate player occasionally triggers a
+ * check — network jitter, clock drift — ten in a minute on the same check does not.
  *
- * <p>PAS D'ÉTIQUETTE DE JOUEUR ICI, et c'est un cas où la règle stricte s'applique sans nuance :
- * un flag est un événement à HAUTE FRÉQUENCE, et le joueur qui en est l'objet est justement celui
- * qui peut en produire des milliers. Pour savoir QUI, les journaux de GrimAC sont faits pour ça.
+ * <p>No player label here, and this is a case where the strict rule applies without nuance:
+ * a flag is a HIGH-FREQUENCY event, and the player it's about is exactly the one who can
+ * produce thousands of them. To find out WHO, GrimAC's own logs are the right tool.
  *
- * <p>{@code ignoreCancelled = true} : un flag annulé par un autre plugin — une exemption, un
- * joueur en mode créatif — n'a pas eu lieu. Le compter mesurerait les soupçons, pas les faits.
+ * <p>{@code ignoreCancelled = true}: a flag cancelled by another plugin — an exemption, a
+ * player in creative mode — never happened. Counting it would measure suspicion, not fact.
  */
-//
-// @SuppressWarnings("removal") : TOUTE l'API d'événements Bukkit de GrimAC est dépréciée depuis sa
-// 1.2.1.0 — FlagEvent, CompletePredictionEvent, GrimJoinEvent, vérifié une par une — au profit
-// d'une API indépendante de la plateforme qui n'existe pas encore dans la version installée. Il n'y
-// a donc pas d'alternative à choisir, et le jour où GrimAC les retirera, la compilation échouera
-// bruyamment : c'est exactement le bon mode de panne.
+// @SuppressWarnings("removal"): GrimAC's entire Bukkit event API is deprecated since its
+// 1.2.1.0 — FlagEvent, CompletePredictionEvent, GrimJoinEvent, checked one by one — in favor
+// of a platform-independent API that doesn't exist yet in the installed version. There's no
+// alternative to pick, and the day GrimAC removes them, the build will fail loudly: that's
+// exactly the right failure mode.
 @SuppressWarnings("removal")
 public final class GrimCollector implements Collector, Listener {
 
@@ -42,61 +41,60 @@ public final class GrimCollector implements Collector, Listener {
 	private Histogram violations;
 
 	@Override
-	public String nom() {
+	public String name() {
 		return "anticheat";
 	}
 
 	@Override
-	public String origine() {
+	public String source() {
 		return "GrimAC";
 	}
 
 	@Override
-	public void declarer(MetricRegistry r) {
+	public void declare(MetricRegistry r) {
 		flags = r.counter("anticheat_flags_total",
-				"Violations relevées par GrimAC, par contrôle. Son TAUX est le signal : quelques "
-						+ "flags dispersés sont normaux, une rafale sur un même contrôle ne l'est "
-						+ "pas.",
+				"Violations flagged by GrimAC, per check. Its RATE is the signal: a few "
+						+ "scattered flags are normal, a burst on the same check is not.",
 				"check");
 		setbacks = r.counter("anticheat_setbacks_total",
-				"Violations qui ont provoqué un RECUL du joueur — GrimAC l'a effectivement "
-						+ "corrigé, et pas seulement noté.",
+				"Violations that caused a player SETBACK — GrimAC actually corrected it, "
+						+ "not just logged it.",
 				"check");
 		violations = r.histogram("anticheat_violation_level",
-				"Niveau de violation accumulé au moment du flag. Un niveau qui monte distingue "
-						+ "l'incident isolé du comportement soutenu.",
+				"Accumulated violation level at the time of the flag. A rising level "
+						+ "distinguishes an isolated incident from sustained behavior.",
 				new double[] {1, 2, 5, 10, 20, 50, 100, 500});
 	}
 
 	@Override
-	public void relever(MetricRegistry r) {
-		// Rien à relever : tout se compte dans l'écouteur. Un flag est un ÉVÉNEMENT, et
-		// interroger GrimAC au scrape ne rendrait qu'un état instantané sans intérêt.
+	public void collect(MetricRegistry r) {
+		// Nothing to collect: everything is counted in the listener. A flag is an EVENT,
+		// and querying GrimAC at scrape time would only return an uninteresting snapshot.
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
 	public void onFlag(FlagEvent e) {
-		String controle = nom(e);
-		flags.inc(controle);
+		String check = checkName(e);
+		flags.inc(check);
 		violations.observe(e.getViolations());
 		if (e.isSetback()) {
-			setbacks.inc(controle);
+			setbacks.inc(check);
 		}
 	}
 
 	/**
-	 * Le nom du contrôle, borné par construction.
+	 * The check name, bounded by construction.
 	 *
-	 * <p>GrimAC en déclare quelques dizaines et la liste ne dépend pas des joueurs : l'étiquette
-	 * est donc sûre. {@code getCheckName()} peut être nul sur un contrôle mal déclaré par une
-	 * extension — d'où le repli.
+	 * <p>GrimAC declares a few dozen and the list doesn't depend on players: the label is
+	 * therefore safe. {@code getCheckName()} can be null on a check misdeclared by an
+	 * extension — hence the fallback.
 	 */
-	private static String nom(FlagEvent e) {
-		var controle = e.getCheck();
-		if (controle == null) {
+	private static String checkName(FlagEvent e) {
+		var check = e.getCheck();
+		if (check == null) {
 			return "unknown";
 		}
-		String n = controle.getCheckName();
+		String n = check.getCheckName();
 		return n == null || n.isBlank() ? "unknown" : n.toLowerCase(Locale.ROOT);
 	}
 }
