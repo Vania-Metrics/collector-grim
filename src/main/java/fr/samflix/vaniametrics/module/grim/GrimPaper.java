@@ -1,6 +1,5 @@
 package fr.samflix.vaniametrics.module.grim;
 
-import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import fr.samflix.vaniametrics.api.VaniaMetrics;
@@ -18,15 +17,17 @@ public final class GrimPaper extends JavaPlugin {
 	@Override
 	public void onEnable() {
 		VaniaMetrics metrics = VaniaMetricsProvider.get();
-		collector = new GrimCollector();
+		collector = new GrimCollector(this);
 		metrics.register(collector);
-		Bukkit.getPluginManager().registerEvents(collector, this);
+		collector.subscribe();
 	}
 
 	@Override
 	public void onDisable() {
 		if (collector != null) {
-			VaniaMetricsProvider.find().ifPresent(m -> m.unregister(collector));
+			// Unregistering closes the collector, which unsubscribes it from GrimAC; without the
+			// core, close it directly.
+			VaniaMetricsProvider.find().ifPresentOrElse(m -> m.unregister(collector), collector::close);
 		}
 	}
 }

@@ -1,12 +1,14 @@
 package fr.samflix.vaniametrics.module.grim;
 
 import java.util.Locale;
+import java.util.function.Supplier;
 
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
-
-import ac.grim.grimac.api.events.FlagEvent;
+import ac.grim.grimac.api.AbstractCheck;
+import ac.grim.grimac.api.GrimAPIProvider;
+import ac.grim.grimac.api.GrimAbstractAPI;
+import ac.grim.grimac.api.GrimUser;
+import ac.grim.grimac.api.event.ListenerPriority;
+import ac.grim.grimac.api.event.events.FlagEvent;
 
 import fr.samflix.vaniametrics.api.Collector;
 import fr.samflix.vaniametrics.api.Counter;
@@ -25,20 +27,28 @@ import fr.samflix.vaniametrics.api.MetricRegistry;
  * a flag is a HIGH-FREQUENCY event, and the player it's about is exactly the one who can
  * produce thousands of them. To find out WHO, GrimAC's own logs are the right tool.
  *
- * <p>{@code ignoreCancelled = true}: a flag cancelled by another plugin — an exemption, a
- * player in creative mode — never happened. Counting it would measure suspicion, not fact.
+ * <p>A flag cancelled by another listener — an exemption, a player in creative mode — never
+ * happened. Counting it would measure suspicion, not fact.
+ *
+ * <p>Flags come from GrimAC's own event bus, not from Bukkit's event system. GrimAC deprecated
+ * its Bukkit events, and Paper says so on every start ("Server performance will be affected"):
+ * each flag would otherwise be bridged into a Bukkit event just for us. The verbose text of a flag
+ * is handed over as a supplier and never asked for, so it is never built for us either.
  */
-// @SuppressWarnings("removal"): GrimAC's entire Bukkit event API is deprecated since its
-// 1.2.1.0 — FlagEvent, CompletePredictionEvent, GrimJoinEvent, checked one by one — in favor
-// of a platform-independent API that doesn't exist yet in the installed version. There's no
-// alternative to pick, and the day GrimAC removes them, the build will fail loudly: that's
-// exactly the right failure mode.
-@SuppressWarnings("removal")
-public final class GrimCollector implements Collector, Listener {
+public final class GrimCollector implements Collector {
+
+	private final Object plugin;
+	private final FlagEvent.SupplierHandler handler = this::onFlag;
+	private FlagEvent.Channel channel;
 
 	private Counter flags;
 	private Counter setbacks;
 	private Histogram violations;
+
+	/** @param plugin the plugin the subscription belongs to, as GrimAC's event bus expects */
+	public GrimCollector(Object plugin) {
+		this.plugin = plugin;
+	}
 
 	@Override
 	public String name() {
@@ -72,14 +82,38 @@ public final class GrimCollector implements Collector, Listener {
 		// and querying GrimAC at scrape time would only return an uninteresting snapshot.
 	}
 
-	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-	public void onFlag(FlagEvent e) {
-		String check = checkName(e);
-		flags.inc(check);
-		violations.observe(e.getViolations());
-		if (e.isSetback()) {
-			setbacks.inc(check);
+	/** Listens last, as Bukkit's MONITOR did: whatever the other listeners decided is final. */
+	public void subscribe() {
+		GrimAbstractAPI api = GrimAPIProvider.get();
+		channel = api.getEventBus().get(FlagEvent.class);
+		channel.onFlagSupplier(api.getGrimPlugin(plugin), handler, ListenerPriority.MONITOR);
+	}
+
+	@Override
+	public void close() {
+		if (channel != null) {
+			channel.unsubscribe(handler);
+			channel = null;
 		}
+	}
+
+	/**
+	 * Called on GrimAC's threads, several at once: the instruments are thread-safe.
+	 *
+	 * @return the cancellation state, unchanged: this listener only counts
+	 */
+	private boolean onFlag(GrimUser user, AbstractCheck check, Supplier<String> verbose, boolean cancelled) {
+		if (cancelled) {
+			return true;
+		}
+		String name = checkName(check);
+		flags.inc(name);
+		violations.observe(check.getViolations());
+		// What GrimAC's own FlagEvent#isSetback() computes.
+		if (check.getViolations() > check.getSetbackVL()) {
+			setbacks.inc(name);
+		}
+		return false;
 	}
 
 	/**
@@ -89,8 +123,7 @@ public final class GrimCollector implements Collector, Listener {
 	 * therefore safe. {@code getCheckName()} can be null on a check misdeclared by an
 	 * extension — hence the fallback.
 	 */
-	private static String checkName(FlagEvent e) {
-		var check = e.getCheck();
+	private static String checkName(AbstractCheck check) {
 		if (check == null) {
 			return "unknown";
 		}
