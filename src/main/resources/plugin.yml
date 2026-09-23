@@ -8,3 +8,4 @@ api-version: '1.21'
 authors: [mc-vania]
 description: "GrimAC metrics: violations, setbacks, violation level."
 depend: [VaniaMetrics, GrimAC]
+folia-supported: true
