@@ -1,0 +1,8 @@
+# What the test server needs besides the core; read by the core's testkit (CollectorTestConfig).
+# The first jar of a list is the target plugin: its version is checked against compatibility.yml.
+collectors: [anticheat]
+runtime: java21
+plugins:
+  bukkit:
+    - url: https://cdn.modrinth.com/data/LJNGWSvH/versions/Gd6BG1HA/grimac-bukkit-2.3.74-8eb5f28.jar
+      sha512: b210eb49bce1cd4b3e0fe375193522694faa379a347244a0770f62c87ab23c92e06ce4920ee192cbe0112fa1e071191a7d642032777c1db2925e281fee175168
