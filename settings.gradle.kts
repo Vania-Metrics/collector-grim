@@ -6,7 +6,7 @@
 // Overrides, for a single build:
 //   ./gradlew build -PvaniaCore.ref=main          a different core ref
 //   ./gradlew build -PvaniaCore.dir=../core       a local core (API dev)
-rootProject.name = "colecteur-grim"
+rootProject.name = "collector-grim"
 
 dependencyResolutionManagement {
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
