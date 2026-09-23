@@ -1,0 +1,3 @@
+# Jars des plugins tiers dont ce collecteur dépend à la COMPILATION.
+# Une ligne par URL. Aucun jar tiers n'est embarqué dans le jar produit.
+https://cdn.modrinth.com/data/LJNGWSvH/versions/Gd6BG1HA/grimac-bukkit-2.3.74-8eb5f28.jar

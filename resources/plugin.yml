@@ -1,0 +1,10 @@
+# Métriques d'anticheat GrimAC.
+#
+# Un écouteur avant tout : les violations se comptent quand elles arrivent, pas quand Prometheus interroge.
+name: VaniaMetrics-GrimAC
+version: ${version}
+main: fr.samflix.vaniametrics.module.grim.GrimPaper
+api-version: '1.21'
+authors: [mc-vania]
+description: "Métriques GrimAC : violations, reculs, niveau de violation."
+depend: [VaniaMetrics, GrimAC]
