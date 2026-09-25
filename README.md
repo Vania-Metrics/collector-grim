@@ -1,3 +1,5 @@
+<img src="icon.png" alt="" width="96" align="right">
+
 # collector-grim
 
 VaniaMetrics collector for grim. A module is a jar, loaded by the platform only if the core is present.
